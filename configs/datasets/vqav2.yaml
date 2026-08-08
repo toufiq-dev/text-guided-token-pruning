@@ -1,0 +1,15 @@
+# VQAv2 dataset config
+dataset:
+  name: "vqav2"
+  hub_path: "HuggingFaceM4/VQAv2"   # verify hub path at runtime; may require auth
+  split: "validation"
+  image_key: "image"
+  question_key: "question"
+  answers_key: "answers"            # list of up to 10 ground-truth answers
+  metric: "vqa_accuracy"            # VQAv2-style: min(matches/3, 1)
+  num_samples: null                 # null = full split
+  task_category: "object_recognition"  # primary task type (diagnostics D2)
+
+preprocessing:
+  image_size: 384
+  max_new_tokens: 16

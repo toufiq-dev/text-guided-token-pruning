@@ -1,0 +1,19 @@
+# Experiment: full-token baseline (no pruning)
+experiment:
+  name: "baseline_full_tokens"
+  model: "configs/models/smolvlm_instruct.yaml"
+  datasets: ["configs/datasets/vqav2.yaml", "configs/datasets/gqa.yaml", "configs/datasets/textvqa.yaml"]
+
+pruning:
+  enabled: false
+  target_keep_ratio: 1.0
+  scoring_method: "none"
+
+baseline:
+  random_pruning: false
+  full_tokens: true
+
+evaluation:
+  metrics: ["vqa_accuracy", "exact_match", "flops_estimate", "latency_ms"]
+  seeds: [0, 1, 2, 3, 4]
+  max_samples_per_benchmark: 500

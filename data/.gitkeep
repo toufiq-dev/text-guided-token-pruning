@@ -1,0 +1,4 @@
+# data/
+
+Raw datasets are git-ignored. See `download_scripts/README.md` for how datasets
+are loaded at runtime from the HuggingFace hub or local JSONL files.

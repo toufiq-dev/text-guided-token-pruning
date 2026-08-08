@@ -1,0 +1,15 @@
+# GQA dataset config
+dataset:
+  name: "gqa"
+  hub_path: "lmms-lab/GQA"          # verify hub path at runtime
+  split: "testdev"
+  image_key: "image"
+  question_key: "question"
+  answers_key: "answer"
+  metric: "exact_match"
+  num_samples: null
+  task_category: "spatial_reasoning"  # GQA is the spatial-reasoning probe (diagnostics D2/D4)
+
+preprocessing:
+  image_size: 384
+  max_new_tokens: 16

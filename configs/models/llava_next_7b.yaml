@@ -1,0 +1,39 @@
+# LLaVA-NeXT-7B model config (tertiary model — reduced eval slice)
+# Scoped in so the strongest motivating case from proposal §1.1 (2,880 tokens,
+# ~6.2 TFLOPs/image) is measured, not merely cited. Needs more VRAM than
+# SmolVLM / LLaVA-1.5; run only the reduced slice (GQA + TextVQA, 1,000 samples).
+model:
+  name: "llava-hf/llava-v1.6-vicuna-7b-hf"
+  type: "LlavaNextForConditionalGeneration"
+  vision_encoder: "CLIP ViT-L/14 (AnyRes) up to 672px"
+  # Verified: up to 2,880 visual tokens with AnyRes grids (e.g. 672x672)
+  num_visual_tokens: 2880
+  vision_hidden_dim: 1024
+  llm_hidden_dim: 4096
+  llm_layers: 32
+  torch_dtype: "float16"
+  processor_name: "llava-hf/llava-v1.6-vicuna-7b-hf"
+
+  # LLaVA-NeXT extraction points (pre-decoder, before the LLM):
+  #   vision tower  -> model.vision_tower
+  #   projector     -> model.multi_modal_projector
+  #   language model-> model.language_model
+  # Same pre-decoder contract as LLaVA-1.5; use the thin LLaVA adapter
+  # (see scripts/05_run_ablations.py), not the Idefics3-specific wrapper.
+  vision_model_path: "model.vision_tower.vision_model"
+  connector_path: "model.multi_modal_projector"
+  text_model_path: "model.language_model"
+
+pruning:
+  target_keep_ratio: 0.5
+  scoring_method: "cross_attention"
+  merge_strategy: "drop"
+  pruning_location: "pre_decoder"
+
+baseline:
+  random_pruning: true
+  full_tokens: true
+
+# NOTE: sample limits live in the experiment configs (evaluation.max_samples_per_benchmark),
+# not here. For LLaVA-NeXT use a reduced slice of 1,000 samples on GQA + TextVQA only
+# (see docs/thesis/proposal.md §5) to fit in Colab VRAM.

@@ -1,0 +1,33 @@
+# Experiment: FastV (ECCV 2024, arXiv:2403.06764) mandatory head-to-head baseline
+# Run via scripts/08_run_fastv_baseline.py (wraps the official public code:
+# github.com/pkunlp-icler/FastV). FastV is LLaVA-1.5-only, so this comparison
+# runs on LLaVA-1.5-7B (576 visual tokens) — the secondary model of the eval
+# protocol. Requires FastV's own patched-transformers environment (see the
+# runner docstring), NOT the tgtp venv.
+experiment:
+  name: "baseline_fastv"
+  model: "configs/models/llava_1_5_7b.yaml"
+  datasets: ["configs/datasets/vqav2.yaml", "configs/datasets/gqa.yaml", "configs/datasets/textvqa.yaml"]
+
+pruning:
+  enabled: false            # FastV performs its own in-decoder pruning
+  target_keep_ratio: 0.5    # keep ∈ {0.75, 0.50, 0.25} -> ranks {432, 288, 144} of 576
+
+external_baseline:
+  method: "fastv"
+  repo_url: "https://github.com/pkunlp-icler/FastV"
+  entry_scripts:
+    textvqa: "src/FastV/inference/eval/inference_ocrvqa.py"
+    aokvqa: "src/FastV/inference/eval/inference_aokvqa.py"
+  agg_layer: 2               # prune after layer 2 (paper default)
+  inplace: false             # set true for real in-place acceleration
+  # NOTE: run with the FastV env python (--python /path/to/fastv_env/bin/python)
+
+baseline:
+  random_pruning: true       # random baseline still mandatory at matched budgets
+  full_tokens: true
+
+evaluation:
+  metrics: ["vqa_accuracy", "exact_match", "flops_estimate"]
+  seeds: [0, 1, 2, 3, 4]
+  max_samples_per_benchmark: 500

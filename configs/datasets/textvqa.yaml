@@ -1,0 +1,15 @@
+# TextVQA dataset config
+dataset:
+  name: "textvqa"
+  hub_path: "lmms-lab/TextVQA"      # verify hub path at runtime
+  split: "validation"
+  image_key: "image"
+  question_key: "question"
+  answers_key: "answers"
+  metric: "vqa_accuracy"
+  num_samples: null
+  task_category: "ocr"              # OCR is expected to be the most pruning-fragile task
+
+preprocessing:
+  image_size: 384
+  max_new_tokens: 16

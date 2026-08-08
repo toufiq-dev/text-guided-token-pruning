@@ -1,0 +1,23 @@
+# Experiment: text-guided pruning at 25% token removal (keep_ratio 0.75)
+experiment:
+  name: "pruning_25pct"
+  model: "configs/models/smolvlm_instruct.yaml"
+  datasets: ["configs/datasets/vqav2.yaml", "configs/datasets/gqa.yaml", "configs/datasets/textvqa.yaml"]
+
+pruning:
+  enabled: true
+  target_keep_ratio: 0.75
+  scoring_method: "cross_attention"
+  merge_strategy: "drop"
+  pruning_location: "pre_decoder"
+  scorer: "learned"          # trained via scripts/02_train_pruning_module.py
+  checkpoint: "outputs/pruner_25pct/pruner.pt"
+
+baseline:
+  random_pruning: true
+  full_tokens: true
+
+evaluation:
+  metrics: ["vqa_accuracy", "exact_match", "flops_estimate", "latency_ms"]
+  seeds: [0, 1, 2, 3, 4]
+  max_samples_per_benchmark: 500

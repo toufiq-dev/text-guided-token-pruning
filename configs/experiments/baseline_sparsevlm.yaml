@@ -1,0 +1,40 @@
+# Experiment: SparseVLM (ICML 2025, arXiv:2410.04417) mandatory head-to-head baseline
+# Run via scripts/09_run_sparsevlm_baseline.py (wraps the official public code:
+# github.com/Gumpest/SparseVLMs). SparseVLM is LLaVA-1.5-only -> runs on
+# LLaVA-1.5-7B (576 visual tokens). Requires SparseVLM's own conda env
+# (python 3.10, transformers==4.37.0, flash_attn==2.3.3).
+#
+# BUDGET HONESTY: SparseVLM natively supports only RETAIN_TOKN in
+# {192, 128, 96, 64}. keep 0.75/0.50/0.25 of 576 (=432/288/144) are NOT
+# attainable exactly; the runner snaps to the nearest supported count and the
+# results JSON records the ACTUAL prune_ratio + kept tokens so comparisons stay
+# at matched budgets (pre-registration requirement).
+experiment:
+  name: "baseline_sparsevlm"
+  model: "configs/models/llava_1_5_7b.yaml"
+  datasets: ["configs/datasets/vqav2.yaml", "configs/datasets/gqa.yaml", "configs/datasets/textvqa.yaml"]
+
+pruning:
+  enabled: false            # SparseVLM performs its own progressive in-decoder sparsification
+  target_keep_ratio: 0.333  # nearest native budget: 192 of 576 tokens
+
+external_baseline:
+  method: "sparsevlm"
+  repo_url: "https://github.com/Gumpest/SparseVLMs"
+  eval_scripts:
+    vqav2: "scripts/v1_5/eval/vqav2.sh"
+    gqa: "scripts/v1_5/eval/gqa.sh"
+    textvqa: "scripts/v1_5/eval/textvqa.sh"
+    mmbench: "scripts/v1_5/eval/mmbench.sh"
+  supported_retain_tokens: [192, 128, 96, 64]
+  use_version: null          # set to "2_0" for SparseVLM+ (TPAMI 2026)
+  # NOTE: run inside the SparseVLMs conda env; the eval .sh scripts inherit it.
+
+baseline:
+  random_pruning: true       # random baseline still mandatory at matched budgets
+  full_tokens: true
+
+evaluation:
+  metrics: ["vqa_accuracy", "exact_match", "flops_estimate"]
+  seeds: [0, 1, 2, 3, 4]
+  max_samples_per_benchmark: 500

@@ -1,0 +1,35 @@
+# SmolVLM-Instruct model config (verified against HuggingFaceTB/SmolVLM-Instruct config.json)
+model:
+  name: "HuggingFaceTB/SmolVLM-Instruct"
+  type: "Idefics3ForConditionalGeneration"
+  vision_encoder: "SigLIP ViT-SO400M patch14-384"
+  # Verified architecture facts (Aug 2026):
+  #   - SigLIP emits a 27x27 = 729 patch grid at 384x384 input (vision hidden dim 1152)
+  #   - The Idefics3 pixel-shuffle connector (scale factor 3) compresses this to
+  #     9x9 = 81 tokens (image_seq_len: 81) that actually enter the LLM decoder
+  #   - The text decoder is SmolLM2 (Llama-style, hidden 2048, 24 layers)
+  vision_patches: 729
+  image_seq_len: 81            # tokens entering the LLM decoder after pixel-shuffle
+  vision_hidden_dim: 1152
+  llm_hidden_dim: 2048
+  llm_layers: 24
+  torch_dtype: "float16"
+  processor_name: "HuggingFaceTB/SmolVLM-Instruct"
+
+  # CRITICAL: these are the correct extraction points (pre-decoder)
+  vision_model_path: "model.model.vision_model"
+  connector_path: "model.model.connector"
+  text_model_path: "model.model.text_model"
+
+  # WRONG (do NOT use): model.model(**inputs).last_hidden_state
+  # That is the post-decoder output — fully contextualized, useless for pruning decisions.
+
+pruning:
+  target_keep_ratio: 0.5
+  scoring_method: "cross_attention"
+  merge_strategy: "drop"
+  pruning_location: "pre_decoder"  # NOT "post_decoder"
+
+baseline:
+  random_pruning: true   # Always include random pruning baseline
+  full_tokens: true

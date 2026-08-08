@@ -1,0 +1,24 @@
+# Experiment: text-guided pruning at 75% token removal (keep_ratio 0.25)
+# Stress test — expected to exceed the 2% accuracy budget; maps the tradeoff frontier.
+experiment:
+  name: "pruning_75pct"
+  model: "configs/models/smolvlm_instruct.yaml"
+  datasets: ["configs/datasets/vqav2.yaml", "configs/datasets/gqa.yaml", "configs/datasets/textvqa.yaml"]
+
+pruning:
+  enabled: true
+  target_keep_ratio: 0.25
+  scoring_method: "cross_attention"
+  merge_strategy: "drop"
+  pruning_location: "pre_decoder"
+  scorer: "learned"
+  checkpoint: "outputs/pruner_75pct/pruner.pt"
+
+baseline:
+  random_pruning: true
+  full_tokens: true
+
+evaluation:
+  metrics: ["vqa_accuracy", "exact_match", "flops_estimate", "latency_ms"]
+  seeds: [0, 1, 2, 3, 4]
+  max_samples_per_benchmark: 500
