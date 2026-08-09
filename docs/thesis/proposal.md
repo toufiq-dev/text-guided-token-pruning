@@ -96,6 +96,8 @@ gibberish failure documented in §1.3). The codebase encodes this as a hard guar
 
 ## Section 2 — Related Work
 
+**Recent surveys:** Two comprehensive 2026 surveys provide taxonomies we position within: (1) *Reducing Token Redundancy in LVLMs: A Systematic Review* (ACL 2026); (2) *A Survey of Token Compression for Efficient MLLMs* (arXiv:2507.20198). Our work sits at the intersection of pre-decoder placement, learned text-conditioning, and extreme-compression evaluation.
+
 ### 2.1 Training-free decoder-side pruning
 
 **FastV** (Chen et al., ECCV 2024, arXiv:2403.06764): after layer 2 of the LLM,
@@ -217,10 +219,34 @@ the vision encoder preserves spatial integrity (swarm-inspired separation,
 alignment, aggregation), and a second stage inside the LLM performs text-guided
 pruning. *Limitation:* in-LLM second stage; preprint.
 
+**Script** (Yang, Xu, Pang & Yuan, TMLR 2025, arXiv:2512.01949): training-free
+graph-structured pruning (spatial redundancy) + query-conditioned semantic
+pruning (k-DPP kernel over query relevance × feature diversity) at the pre-LLM
+boundary; up to 10× FLOPs ↓ with 96.88% accuracy retained on LLaVA-NeXT-7B.
+*Limitation:* training-free (no learned scorer); LLaVA-only; no public code
+(register as cited-context baseline, §5 / pre-registration P5).
+
+**AsymVLM** (Feng, Gulhan & Kandemir, arXiv:2605.29535, May 2026): learned
+per-dimension importance-weight vector with per-sample adaptive budgeting,
+pruning vision tokens before prefill; up to 54% FLOPs ↓ and +2–3% on
+document/chart tasks (Phi-3.5-Vision, Gemma 3). *Limitation:* trained with MSE on
+hidden states (not KL-on-logits); a per-dimension weight vector rather than a
+full cross-attention module; also evicts text tokens; no public code.
+
+**GRIP-VLM** (Huang et al., arXiv:2605.13375, May 2026): pre-decoder ATS
+(Adaptive Token Selection) scorer trained with a multi-objective loss
+(L_distill + α·L_KL + β·L_ratio) in a supervised warm-up, then refined with GRPO
+reinforcement learning (LLaVA-1.5/NeXT, Qwen2-VL). *Limitation:* KL-on-logits is
+one term in a multi-objective loss followed by an RL stage; our KL-on-logits is
+the primary sole objective with a soft-masked STE path and no RL stage (§2.8, A6);
+no public code.
+
 **Our position:** none of this lineage trains an explicit text-conditioned
-cross-attention scorer by **distillation from the full-token teacher** at the
-strict pre-decoder boundary, and none evaluates on the compressed-token SmolVLM
-regime with pre-registered random-baseline-first diagnostics (D1–D7). The closest
+cross-attention scorer by **distillation from the full-token teacher** as the
+*primary sole objective* at the strict pre-decoder boundary (GRIP-VLM's KL term
+is one component of a multi-objective + RL pipeline; AsymVLM regresses hidden
+states — see §2.8), and none evaluates on the compressed-token SmolVLM regime
+with pre-registered random-baseline-first diagnostics (D1–D7). The closest
 *trained* competitors (EvoComp, VisionSelector) are covered in §2.2; see §2.8 for
 the honest gap statement.
 
@@ -260,6 +286,11 @@ baseline a first-class citizen** (D7).
 | **ResPrune** (arXiv:2603.21105) | 2026 ⚠️ preprint | subspace-reconstruction selection, text-relevance-conditioned | pre-decoder | free | ✅ | LLaVA-1.5/NeXT, Qwen2.5-VL | significant | small | ⚠️ | trained scorer + distillation + diagnostics |
 | **Nüwa** (arXiv:2602.02951) | 2026 ⚠️ preprint | two-stage: spatial integrity + text-guided in-LLM | pre-encoder + in-decoder | ⚠️ | ✅ | LVLMs | significant | small | ⚠️ | single-stage strict pre-decoder, no in-LLM stage |
 | **One Layer's Trash** (arXiv:2606.14277) | **CVPR 2026** | adaptive layer-wise selection with token reintegration | inside decoder (layer-wise) | free | n/a | LLaVA, Qwen2.5-VL | 89% tokens | retains 96.7% acc | ✅ | static pre-decoder reduction, KV savings from token zero |
+| Script (Yang et al., TMLR 2025) | TMLR 2025 | Graph-structured + k-DPP query-conditioned | Pre-LLM | Free | ✅ (k-DPP) | LLaVA-1.5/NeXT, Video-LLaVA, InternVL3 | up to 10× FLOPs ↓ | 96.88% acc retained | ⚠️ | **Training-free vs our distillation-trained; LLaVA-only vs our SmolVLM regime** |
+| AsymVLM (Feng et al., May 2026) | arXiv 2605.29535 | Learned per-dim weight vector + adaptive budget | Pre-prefill | ✅ Trained | Implicit (MSE on hidden states) | Phi-3.5-Vision, Gemma 3 | up to 54% FLOPs ↓ | +2-3% on DocVQA | ❌ No code | **MSE-hidden-states vs our KL-logits; weight vector vs our cross-attention module; also does text eviction** |
+| GRIP-VLM (Huang et al., May 2026) | arXiv 2605.13375 | ATS scorer + GRPO RL | Pre-decoder | ✅ Trained | Multi-objective (L_distill + α·L_KL + β·L_ratio) + RL | LLaVA-1.5/NeXT, Qwen2-VL | significant | maintains acc | ❌ No code | **KL as one term in multi-objective vs our KL as primary sole objective; RL Stage II vs our pure supervised STE** |
+| IDPruner (Tan et al., Feb 2026) | arXiv 2602.13315 | MMR-based importance-diversity | Pre-LLM | Free | ❌ | Qwen2.5-VL | up to 90% tokens | 86.40% acc at 90% prune | ✅ Has code | **Training-free vs our trained; FlashAttention-compatible** |
+| SVD-Prune (2026) | arXiv 2604.11530 | SVD-based training-free | Pre-LLM | Free | ❌ | LLaVA series | aggressive (→16/32 tokens) | competitive | ⚠️ Check | **Extreme compression from large baselines vs our native sub-100 regime** |
 
 ### 2.8 Gap analysis (honest statement, verified 2026-08)
 
@@ -282,10 +313,7 @@ baseline a first-class citizen** (D7).
    evaluated on the compressed-token SmolVLM regime (81 LLM-input tokens), where
    redundancy claims are *harder* (already compressed) and where our finding that
    random 50% pruning still answers correctly is surprising and under-explored.
-3. **Distillation-trained importance scorer?** Still rare. EvoComp uses
-   evolutionary labeling; VisionSelector uses end-to-end alignment ⚠️; ours
-   additionally distills the full-token teacher output distribution (KL) through a
-   soft-masked surrogate gradient path.
+3. **KL-on-logits distillation as primary objective with soft-masked STE?** GRIP-VLM (May 2026) uses KL-divergence on logits as *one term* in a multi-objective loss (L_distill + α·L_KL + β·L_ratio) during a supervised warm-up stage, followed by RL (GRPO) in Stage II. AsymVLM uses MSE on hidden states. **Our method uses KL-on-logits as the *primary sole objective* with a soft-masked straight-through estimator gradient path, without RL stages.** To our knowledge, no prior work has directly compared MSE-on-hidden-states vs KL-on-logits as token-scorer training objectives — we add this as a mandatory ablation (A6 in §5).
 4. **Spatial vs. object-recognition sensitivity?** Not systematically separated in
    prior work. We pre-register this (D2/D4) using GQA (spatial) vs. VQAv2
    (recognition) vs. TextVQA (OCR).
@@ -436,7 +464,7 @@ FastV/SparseVLM at matched budgets.
 - **Pruning ratios:** 25% / 50% / 75% removed (keep 0.75 / 0.50 / 0.25).
 - **Metrics:** VQA accuracy (VQAv2-style), exact match, FLOPs reduction estimate,
   peak VRAM, tokens/sec / latency (ms).
-- **Statistical protocol:** 5 seeds per config (3 minimum for the full matrix);
+- **Statistical protocol:** fixed seed allocation (pre-registration §3): 5 seeds for every P1 cell on the primary model (SmolVLM-Instruct), 3 seeds for all other cells;
   report mean ± std; decision statistics = paired t-test, Cohen's d (with CI), and
   a percentile bootstrap CI (10,000 resamples) on the mean difference; Wilcoxon
   signed-rank is reported as a *non-binding* robustness check — at n=3 the minimum
@@ -447,9 +475,20 @@ FastV/SparseVLM at matched budgets.
   head-to-head comparisons at matched budgets — both have public code and are
   implemented in weeks 3–4, not hedged as "if implementable". LVPruning / IVTP /
   CDPruner are added if their public code is usable.
+- **P5 (Mandatory if code available / Cited-context if not):** GRIP-VLM
+  (arXiv:2605.13375, no public code — register as cited-context), AsymVLM
+  (arXiv:2605.29535, no public code — register as cited-context), Script (TMLR
+  2025, no public code — register as cited-context), IDPruner (arXiv:2602.13315,
+  has public code — implement as baseline). For methods without public code, we
+  document the equations and justify why reimplementation is out of scope for
+  this thesis timeline.
 - **Ablations:** text-conditioned vs. text-agnostic scoring; cross-attention vs.
   cosine; drop vs. merge; pre-decoder vs. in-decoder; Gumbel/STE vs. hard top-K
   training; pre- vs. post-decoder location (gibberish verification).
+- **A6. Training objective ablation:** Compare MSE-on-hidden-states (AsymVLM-style)
+  vs. KL-on-logits (proposed) as the scorer training objective, at matched
+  architectures and hyperparameters. This is the first direct comparison of these
+  objectives for visual token importance scoring.
 
 ---
 
@@ -474,7 +513,7 @@ FastV/SparseVLM at matched budgets.
 | 1–2 | Setup + literature | Repo, environment, verified literature matrix, pre-registration |
 | 3–4 | Baselines + extraction | Cache ViT tokens; run full-token + random + **FastV + SparseVLM** head-to-head baselines on all benchmarks |
 | 5–6 | Pruning module | Implement TextGuidedPruner; distillation training; temperature schedule |
-| 7–8 | Evaluation | All ratios × all benchmarks × head-to-head vs. FastV/SparseVLM × all ablations; 5 seeds |
+| 7–8 | Evaluation | All ratios × all benchmarks × head-to-head vs. FastV/SparseVLM × all ablations; fixed seed allocation (pre-registration §3) |
 | 9–10 | Diagnostics + analysis | D1–D7, failure analysis, visualizations, report |
 | 11–12 | Writing + revision | Full draft, figures, tables, defense preparation |
 

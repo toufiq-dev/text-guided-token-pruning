@@ -47,9 +47,10 @@ results/
 
 # IDE / OS
 .idea/
-.vscode/
 .DS_Store
 
 # Logs
 *.log
 logs/
+config.bat
+node_modules

@@ -64,6 +64,7 @@ python scripts/06_generate_report.py
 - **Always** include `--scoring random` results (D7) — they are the bar to beat.
 - The wrapper **raises** if you try to prune post-decoder hidden states; never
   silence that error (D6).
-- Log every run's seed; use 5 seeds for the final numbers (3 minimum — see
-  `docs/pre_registration.md` §3; Wilcoxon is non-binding below 5 seeds).
+- Log every run's seed; use 5 seeds for the primary-model P1 cells and 3 seeds
+  elsewhere (fixed allocation — see `docs/pre_registration.md` §3; Wilcoxon is
+  non-binding below 5 seeds).
 - If a notebook/script disconnects: rerun — the cache means nothing is lost.

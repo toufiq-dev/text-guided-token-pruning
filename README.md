@@ -2,7 +2,7 @@
 
 **tgtp** is a research repository for a Master's thesis that asks a single question: *can a lightweight, text-conditioned pruning module decide which visual tokens a Multimodal Large Language Model (MLLM) actually needs, before those tokens ever reach the LLM decoder?*
 
-MLLMs waste enormous compute on redundant background tokens. A 384×384 image produces 729 SigLIP patch tokens (27×27 grid); an LLaVA-NeXT image produces up to 2,880 tokens, and every one of them is processed by every layer of the LLM decoder. We inject a **TextGuidedPruner** between the vision connector and the LLM decoder that scores each visual token against the *text prompt* via cross-attention, keeps the top-K most relevant tokens, and drops the rest — cutting inference FLOPs by up to ~50% while holding VQA accuracy within ~2% of the full-token baseline.
+MLLMs waste enormous compute on redundant background tokens. A 384×384 image produces 729 SigLIP patch tokens (27×27 grid); an LLaVA-NeXT image produces up to 2,880 tokens, and every one of them is processed by every layer of the LLM decoder. We inject a **TextGuidedPruner** between the vision connector and the LLM decoder that scores each visual token against the *text prompt* via cross-attention, keeps the top-K most relevant tokens, and drops the rest — cutting inference FLOPs by up to ~50% while holding VQA accuracy within ~2 pp of the full-token baseline.
 
 ```
 ┌─────────┐   ┌──────────────┐   ┌────────────┐   ┌────────────────────────┐   ┌──────────────┐   ┌────────┐
@@ -105,7 +105,7 @@ text-guided-token-pruning/
 │   ├── data/           # VQA loaders + image processing (+ token caching)
 │   ├── evaluation/     # VQA metrics, efficiency metrics, D1–D7 diagnostics
 │   └── utils/          # logging + visualization
-├── scripts/            # 01..07: extract → train → infer → evaluate → ablate → report → random baseline
+├── scripts/            # 01..09: extract → train → infer → evaluate → ablate → report → random baseline → FastV → SparseVLM
 ├── notebooks/          # Colab-ready sanity checks and analysis
 ├── tests/              # pytest suite (run: pytest tests/ -v)
 ├── docs/               # thesis proposal, pre-registration, guides
