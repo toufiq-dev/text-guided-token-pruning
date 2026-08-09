@@ -25,7 +25,7 @@ cannot be selectively reported. Any deviation from this plan must be logged in
 | **P2 (mandatory head-to-head)** | Text-guided pruning vs. **FastV** (in-decoder; public code) at matched budgets — implemented in weeks 3–4 |
 | **P3 (mandatory head-to-head)** | Text-guided pruning vs. **SparseVLM** (text-guided, in-decoder; training-free; public code) at matched budgets — implemented in weeks 3–4 |
 | **P4 (secondary)** | Text-guided pruning vs. text-agnostic learned pruning (same scorer, mean-pooled text input) |
-| **P5 (optional)** | vs. LVPruning / IVTP / CDPruner, only if their public code is usable |
+| **P5 (mandatory if code available / cited-context if not)** | vs. **GRIP-VLM** (arXiv:2605.13375, no public code — cited-context), **AsymVLM** (arXiv:2605.29535, no public code — cited-context), **Script** (TMLR 2025, no public code — cited-context), **IDPruner** (arXiv:2602.13315, public code — implement as baseline). For methods without public code: equations documented; reimplementation justified out of scope for this thesis timeline. LVPruning / IVTP / CDPruner remain conditional on usable code |
 
 ## 2. Models and benchmarks
 
@@ -43,8 +43,24 @@ cannot be selectively reported. Any deviation from this plan must be logged in
 - **Accuracy:** VQA-accuracy (VQAv2-style `min(matches/3, 1)`) and exact match.
 - **Efficiency:** FLOPs-reduction estimate (transparent back-of-envelope, see
   `efficiency_metrics.py`), peak VRAM, latency (ms), tokens/sec.
-- Reported per (model × benchmark × ratio × method), **mean ± std over 5 seeds**
-  (3 minimum for the full matrix; all seeds fixed via `--seed`).
+- Reported per (model × benchmark × ratio × method), **mean ± std over seeds, all fixed via `--seed`**, with a fixed, non-discretionary allocation: **5 seeds for every P1 cell on the primary model (SmolVLM-Instruct × each benchmark × each ratio) — the cells that feed the binding decision statistics (§4) and success criteria (§5) — and 3 seeds for all other cells (secondary/tertiary models, P2/P3 external baselines, P4, ablations)**.
+- **Per-benchmark sample counts are pinned in advance:** 500 samples for VQAv2,
+  GQA, and TextVQA on the primary model (SmolVLM-Instruct) and secondary model
+  (LLaVA-1.5-7B); **1,000 samples** for the LLaVA-NeXT-7B reduced slice (GQA +
+  TextVQA only). These values match the experiment configs
+  (`evaluation.max_samples_per_benchmark: 500` in `configs/experiments/*.yaml`;
+  reduced slice per `configs/models/llava_next_7b.yaml`). If compute constraints
+  prevent reaching the pinned sample count for a given cell, the deviation must
+  be logged in `change_log.md` **before** the reduced run is executed — never
+  after inspecting results.
+- **Full-token (no-pruning) cells are exempt from multi-seed repetition.** They
+  are run once per benchmark per model. A single **determinism verification** is
+  performed: the full-token cell is run twice on the primary model's headline
+  benchmark (VQAv2), and the two runs must agree to 4 decimal places on the
+  reported metric. If they do not agree, the source of non-determinism is
+  investigated and resolved before any pruned cells are run. This exemption is
+  justified because the full-token inference path contains no stochastic
+  component (eval mode, no dropout, greedy decoding, fixed inputs).
 
 ## 4. Statistical tests (per comparison cell)
 
@@ -61,8 +77,8 @@ Robustness check (non-binding):
 4. **Wilcoxon signed-rank** W is *reported but never decisive*. At n = 3 paired
    seeds the minimum attainable p is 1/8 = 0.125 (one-sided) / 0.25 (two-sided),
    so it **cannot** reach p < 0.05 regardless of effect size. At n = 5 seeds the
-   minimum is 1/32 = 0.03125 (one-sided), so Wilcoxon only becomes meaningful if
-   the full 5-seed matrix is run. (Drawing on best practices for rigorous
+   minimum is 1/32 = 0.03125 (one-sided), so Wilcoxon is only meaningful on the 5-seed
+   P1 cells of the primary model (§3). (Drawing on best practices for rigorous
    empirical ML: never lean on a test that cannot produce significance at your
    seed count.)
 
@@ -70,7 +86,12 @@ Robustness check (non-binding):
 
 - Text-guided pruning **beats random pruning at matched token budgets** (p < 0.05
   on the paired t-test, or the bootstrap CI on the mean difference excludes 0;
-  positive effect size), **and**
+  positive effect size) on the 5-seed P1 cells of the primary model at
+  **keep-ratios 0.50 (primary binding) and 0.25 (secondary binding)**. Keep-ratio
+  0.75 is reported for completeness but is **non-binding**: at 25% token removal
+  the expected gap between random and guided pruning is near zero by construction,
+  and a non-significant result at 0.75 does not falsify H1. Failure at 0.25
+  triggers the H-fail pivot ladder even if 0.50 succeeds, **and**
 - VQA accuracy stays **within 2 pp of the full-token baseline** at keep-ratio 0.50,
   **and**
 - **Field bar (matched budgets):** the accuracy gap to **FastV** and **SparseVLM**
@@ -86,7 +107,7 @@ add anything beyond existing published methods.
 
 | Condition | Verdict | Fallback |
 |---|---|---|
-| Text-guided ≤ random at 50% | H-fail confirmed | (a) learned text-agnostic scorer; (b) adaptive keep-ratio from score entropy |
+| Text-guided ≤ random at 0.50 or 0.25 (the binding ratios, §5) | H-fail confirmed | (a) learned text-agnostic scorer; (b) adaptive keep-ratio from score entropy |
 | Underperforms FastV/SparseVLM by > 1 pp at matched budgets | Claim weakened | Reframe as the rigorous head-to-head + D1–D7 diagnostics contribution; investigate why training-free text-guided scoring is hard to beat (D3/D4) |
 | Accuracy drop > 2 pp at 50% | Budget exceeded | Reduce to 25% pruning; try merge instead of drop |
 | Score collapse (D3) | Training signal dead | Entropy loss upweighting; straight-through only; smaller τ range |
@@ -112,3 +133,10 @@ random-vs-smart deltas. All seven are mandatory outputs of the final report.
 - All configs in `configs/experiments/*.yaml`; all results JSON in `outputs/`.
 - Visual-token cache (script 01) makes reruns cheap and Colab-disconnect safe.
 - Every table in the thesis maps to a script and a results file.
+
+**Literature watch protocol:** Given the rapid pace of this subfield (6 new
+competitor papers identified between May–August 2026), we commit to monthly
+arXiv/ACL anthology re-checks for new token-pruning papers. Any new competitors
+discovered after pre-registration freezing will be logged in
+`docs/change_log.md` with a one-paragraph assessment of threat level and whether
+they invalidate the pre-registered comparisons.
